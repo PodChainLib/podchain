@@ -1,0 +1,31 @@
+{
+  "name": "podchain",
+  "version": "1.0.0",
+  "description": "Cryptographic proof-of-delivery protocol for Nigerian logistics APIs",
+  "module": "src/index.ts",
+  "main": "src/index.ts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters/sqlite": "./src/adapters/sqlite-adapter.ts"
+  },
+  "repository": {
+    "url": "https://github.com/PodChainLib/podchain"
+  },
+  "keywords": [
+    "logistics",
+    "proof-of-delivery",
+    "cryptography",
+    "non-repudiation",
+    "ecdsa",
+    "nigeria"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
