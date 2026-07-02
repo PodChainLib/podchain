@@ -17,7 +17,6 @@ import {
   sha256Hex,
   importPublicKey,
   verifySignature,
-  canonicalBytes,
 } from "../crypto/utils.ts";
 import { PodChainError } from "../errors.ts";
 import type {
@@ -126,6 +125,13 @@ export class TokenManager {
       );
     }
 
+    if (confirmation.signedPayload.taskId !== taskId) {
+      throw new PodChainError(
+        "RECIPIENT_PROOF_INVALID",
+        "Recipient confirmation taskId does not match the task"
+      );
+    }
+
     // Verify the nonce in the recipient's signed payload matches what was issued
     const nonce = confirmation.signedPayload.nonce;
     const expectedNonceHash = await sha256Hex(nonce);
@@ -138,21 +144,13 @@ export class TokenManager {
 
     // Verify the recipient's ECDSA signature over their signed payload
     const recipientKey = await importPublicKey(confirmation.sessionPublicKey);
-    const payloadBytes = canonicalBytes({
-      coordHash: "",  // not present — use the raw payload for recipient signing
-      recipientProof: "",
-      riderId: "",
-      schemaVersion: "1.0",
-      signedAt: confirmation.signedPayload.timestamp,
-      taskId: confirmation.signedPayload.taskId,
-    });
 
     // For Tier 3 recipient signing we serialise the exact object the browser signed
     const recipientPayloadBytes = new TextEncoder().encode(
-      JSON.stringify({
+      canonicalJson({
+        nonce: confirmation.signedPayload.nonce,
         statement: confirmation.signedPayload.statement,
         taskId: confirmation.signedPayload.taskId,
-        nonce: confirmation.signedPayload.nonce,
         timestamp: confirmation.signedPayload.timestamp,
       })
     );
@@ -275,4 +273,12 @@ export class TokenManager {
       );
     }
   }
+}
+
+function canonicalJson(value: Record<string, unknown>): string {
+  const ordered: Record<string, unknown> = {};
+  for (const key of Object.keys(value).sort()) {
+    ordered[key] = value[key];
+  }
+  return JSON.stringify(ordered);
 }

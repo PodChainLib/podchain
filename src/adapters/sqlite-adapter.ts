@@ -114,14 +114,16 @@ export class SQLiteAdapter extends StorageAdapter {
   // ── Key Registry ────────────────────────────────────────────────────────────
 
   async saveKey(key: StoredKey): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO riders (rider_id, registered_at) VALUES ($riderId, $registeredAt)`,
+    ).run(
       { $riderId: key.riderId, $registeredAt: key.registeredAt }
     );
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO key_registry
          (rider_id, public_key_jwk, curve, registered_at, revoked_at)
        VALUES ($riderId, $publicKeyJwk, $curve, $registeredAt, $revokedAt)`,
+    ).run(
       {
         $riderId: key.riderId,
         $publicKeyJwk: JSON.stringify(key.publicKeyJwk),
@@ -152,12 +154,14 @@ export class SQLiteAdapter extends StorageAdapter {
   }
 
   async revokeKey(riderId: string, revokedAt: string): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `UPDATE key_registry SET revoked_at = $revokedAt WHERE rider_id = $riderId`,
+    ).run(
       { $revokedAt: revokedAt, $riderId: riderId }
     );
-    this.db.run(
+    this.db.prepare(
       `UPDATE riders SET status = 'revoked' WHERE rider_id = $riderId`,
+    ).run(
       { $riderId: riderId }
     );
   }
@@ -165,13 +169,14 @@ export class SQLiteAdapter extends StorageAdapter {
   // ── Tasks ───────────────────────────────────────────────────────────────────
 
   async saveTask(task: StoredTask): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO tasks
          (task_id, rider_id, recipient_name, recipient_phone, delivery_address,
           tier, status, created_at)
        VALUES
          ($taskId, $riderId, $recipientName, $recipientPhone, $deliveryAddress,
           $tier, $status, $createdAt)`,
+    ).run(
       {
         $taskId: task.taskId,
         $riderId: task.riderId,
@@ -209,8 +214,9 @@ export class SQLiteAdapter extends StorageAdapter {
   }
 
   async updateTaskStatus(taskId: string, status: string): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `UPDATE tasks SET status = $status WHERE task_id = $taskId`,
+    ).run(
       { $status: status, $taskId: taskId }
     );
   }
@@ -218,11 +224,12 @@ export class SQLiteAdapter extends StorageAdapter {
   // ── Recipient Tokens ────────────────────────────────────────────────────────
 
   async saveToken(token: StoredToken): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO recipient_tokens
          (token_id, task_id, token_hash, tier, consumed, issued_at, expires_at)
        VALUES
          ($tokenId, $taskId, $tokenHash, $tier, 0, $issuedAt, $expiresAt)`,
+    ).run(
       {
         $tokenId: token.tokenId,
         $taskId: token.taskId,
@@ -261,17 +268,19 @@ export class SQLiteAdapter extends StorageAdapter {
    * without any state change — the caller must reject the submission.
    */
   async consumeToken(tokenId: string): Promise<boolean> {
-    const result = this.db.run(
+    const result = this.db.prepare(
       `UPDATE recipient_tokens SET consumed = 1
        WHERE token_id = $tokenId AND consumed = 0`,
+    ).run(
       { $tokenId: tokenId }
     );
     return result.changes > 0;
   }
 
   async updateTokenData(tokenId: string, newTokenHash: string): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `UPDATE recipient_tokens SET token_hash = $tokenHash WHERE token_id = $tokenId`,
+    ).run(
       { $tokenHash: newTokenHash, $tokenId: tokenId }
     );
   }
@@ -279,7 +288,7 @@ export class SQLiteAdapter extends StorageAdapter {
   // ── Proof Certificates ──────────────────────────────────────────────────────
 
   async saveProof(proof: StoredProof): Promise<void> {
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO proof_certificates
          (proof_id, task_id, rider_id, signed_payload, rider_signature,
           recipient_proof, coord_hash, signed_at, received_at,
@@ -290,6 +299,7 @@ export class SQLiteAdapter extends StorageAdapter {
           $recipientProof, $coordHash, $signedAt, $receivedAt,
           $offlineSubmitted, $prevHash, $chainHash, $chainPosition,
           $tier, $schemaVersion)`,
+    ).run(
       {
         $proofId: proof.proofId,
         $taskId: proof.taskId,

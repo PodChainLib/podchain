@@ -16,7 +16,7 @@ import { KeyRegistry } from "./key-registry.ts";
 import { TokenManager } from "./token-manager.ts";
 import { HashChainManager } from "./hash-chain.ts";
 import {
-  canonicalBytes,
+  canonicalSerialise,
   verifySignature,
 } from "../crypto/utils.ts";
 import { PodChainError } from "../errors.ts";
@@ -56,6 +56,12 @@ export class VerificationPipeline {
 
     // ── Step 1: Parse and validate payload structure ─────────────────────────
     const payload = this.parsePayload(input.payload);
+    if (input.payload !== canonicalSerialise(payload)) {
+      throw new PodChainError(
+        "PAYLOAD_MALFORMED",
+        "Payload is not in canonical JSON form"
+      );
+    }
 
     // Confirm the riderId in the payload matches the submitted riderId
     if (payload.riderId !== input.riderId) {
@@ -80,9 +86,9 @@ export class VerificationPipeline {
 
     // ── Step 3: Verify the ECDSA signature ───────────────────────────────────
     // The bytes passed to verify must be byte-for-byte identical to those
-    // that were signed on the device. canonicalBytes() is the shared
-    // serialisation function — any deviation produces a verification failure.
-    const payloadBytes = canonicalBytes(payload);
+    // that were signed on the device. The submitted payload is already checked
+    // for canonical form, so verify the exact submitted UTF-8 bytes.
+    const payloadBytes = new TextEncoder().encode(input.payload);
     const signatureValid = await verifySignature(
       cryptoKey,
       input.signature,
@@ -120,6 +126,13 @@ export class VerificationPipeline {
       );
     }
 
+    if (task.riderId !== input.riderId) {
+      throw new PodChainError(
+        "PAYLOAD_MALFORMED",
+        `Task ${input.taskId} is not assigned to rider ${input.riderId}`
+      );
+    }
+
     // ── Step 5: Validate the RecipientToken ──────────────────────────────────
     // Delegates to the TokenManager — tier-specific validation is handled there.
     // Returns the tokenId for atomic consumption in step 7.
@@ -130,6 +143,13 @@ export class VerificationPipeline {
 
     // ── Step 6: Check timestamp divergence ───────────────────────────────────
     const signedAt = new Date(payload.signedAt);
+    if (Number.isNaN(signedAt.getTime())) {
+      throw new PodChainError(
+        "PAYLOAD_MALFORMED",
+        "signedAt must be a valid ISO 8601 timestamp"
+      );
+    }
+
     const receivedAtDate = new Date(receivedAt);
     const skewMs = Math.abs(receivedAtDate.getTime() - signedAt.getTime());
     const skewHours = skewMs / (1000 * 60 * 60);
@@ -222,6 +242,13 @@ export class VerificationPipeline {
           `Payload is missing required field: ${field}`
         );
       }
+    }
+
+    if (p["schemaVersion"] !== "1.0") {
+      throw new PodChainError(
+        "PAYLOAD_MALFORMED",
+        "schemaVersion must be 1.0"
+      );
     }
 
     return {

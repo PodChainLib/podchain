@@ -9,9 +9,6 @@
     ".": "./src/index.ts",
     "./adapters/sqlite": "./src/adapters/sqlite-adapter.ts"
   },
-  "repository": {
-    "url": "https://github.com/PodChainLib/podchain"
-  },
   "keywords": [
     "logistics",
     "proof-of-delivery",
@@ -22,7 +19,13 @@
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench": "bun run benchmarks/run-all.ts",
+    "bench:crypto": "bun run benchmarks/crypto.bench.ts",
+    "bench:chain": "bun run benchmarks/chain.bench.ts",
+    "bench:pipeline": "bun run benchmarks/pipeline.bench.ts",
+    "bench:vectors": "bun test benchmarks/vectors.test.ts",
+    "bench:report": "bun run benchmarks/format-report.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

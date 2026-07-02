@@ -27,8 +27,9 @@ import { PodChainError } from "../errors.ts";
  */
 export function canonicalSerialise(payload: DeliveryPayload): string {
   const ordered: Record<string, string> = {};
+  const values = payload as unknown as Record<string, string>;
   for (const key of Object.keys(payload).sort()) {
-    ordered[key] = (payload as Record<string, string>)[key]!;
+    ordered[key] = values[key]!;
   }
   return JSON.stringify(ordered);
 }
@@ -48,7 +49,7 @@ export function canonicalBytes(payload: DeliveryPayload): Uint8Array {
  */
 export async function sha256Hex(data: string | Uint8Array): Promise<string> {
   const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
-  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", asWebCryptoBytes(bytes));
   return bufferToHex(hashBuffer);
 }
 
@@ -153,13 +154,17 @@ export async function verifySignature(
     return await crypto.subtle.verify(
       { name: "ECDSA", hash: { name: "SHA-256" } },
       publicKey,
-      sigBytes,
-      data
+      asWebCryptoBytes(sigBytes),
+      asWebCryptoBytes(data)
     );
   } catch {
     // Any error during verification (malformed sig bytes, etc.) is a failure
     return false;
   }
+}
+
+function asWebCryptoBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  return bytes as Uint8Array<ArrayBuffer>;
 }
 
 // ── Random Token Generation ───────────────────────────────────────────────────

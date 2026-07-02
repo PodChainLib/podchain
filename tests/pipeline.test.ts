@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach } from "bun:test";
 import { PodChain } from "../src/podchain.ts";
-import { canonicalSerialise } from "../src/crypto/utils.ts";
+import { canonicalSerialise, fromBase64Url, toBase64Url } from "../src/crypto/utils.ts";
 import {
   createTestPodChain,
   generateTestKeyPair,
@@ -133,8 +133,9 @@ describe("CT — Rejection Tests", () => {
     const payload = buildTestPayload({ taskId, riderId, recipientProof: rawToken });
     const validSignature = await signPayload(keyPair.privateKey, payload);
 
-    // Flip the last character of the base64url signature
-    const tampered = validSignature.slice(0, -1) + (validSignature.endsWith("a") ? "b" : "a");
+    const tamperedBytes = fromBase64Url(validSignature);
+    tamperedBytes[0] = tamperedBytes[0]! ^ 0xff;
+    const tampered = toBase64Url(tamperedBytes);
 
     await expect(
       podchain.verifyAndStore({ taskId, riderId, payload: canonicalSerialise(payload), signature: tampered })
@@ -194,6 +195,60 @@ describe("CT — Rejection Tests", () => {
     await expect(
       podchain.verifyAndStore({ taskId, riderId, payload: canonicalSerialise(payload), signature })
     ).rejects.toMatchObject({ code: "TOKEN_INVALID" });
+  });
+
+  it("CT-13: rejects a signed payload that is valid JSON but not canonical JSON", async () => {
+    const { riderId, taskId, keyPair, rawToken } = await seedRiderAndTask(podchain, 1);
+    const payload = buildTestPayload({ taskId, riderId, recipientProof: rawToken });
+    const signature = await signPayload(keyPair.privateKey, payload);
+    const nonCanonicalPayload = JSON.stringify({
+      taskId: payload.taskId,
+      riderId: payload.riderId,
+      signedAt: payload.signedAt,
+      schemaVersion: payload.schemaVersion,
+      recipientProof: payload.recipientProof,
+      coordHash: payload.coordHash,
+    });
+
+    await expect(
+      podchain.verifyAndStore({
+        taskId,
+        riderId,
+        payload: nonCanonicalPayload,
+        signature,
+      })
+    ).rejects.toMatchObject({ code: "PAYLOAD_MALFORMED" });
+  });
+
+  it("CT-14: rejects an invalid signedAt timestamp before consuming the token", async () => {
+    const { riderId, taskId, keyPair, rawToken } = await seedRiderAndTask(podchain, 1);
+    const payload = buildTestPayload({
+      taskId,
+      riderId,
+      recipientProof: rawToken,
+      signedAt: "not-a-date",
+    });
+    const signature = await signPayload(keyPair.privateKey, payload);
+
+    await expect(
+      podchain.verifyAndStore({
+        taskId,
+        riderId,
+        payload: canonicalSerialise(payload),
+        signature,
+      })
+    ).rejects.toMatchObject({ code: "PAYLOAD_MALFORMED" });
+
+    const corrected = buildTestPayload({ taskId, riderId, recipientProof: rawToken });
+    const correctedSignature = await signPayload(keyPair.privateKey, corrected);
+    await expect(
+      podchain.verifyAndStore({
+        taskId,
+        riderId,
+        payload: canonicalSerialise(corrected),
+        signature: correctedSignature,
+      })
+    ).resolves.toMatchObject({ taskId });
   });
 });
 

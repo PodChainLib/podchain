@@ -1,0 +1,62 @@
+{
+  "suite": "Server — End-to-End Pipeline",
+  "timestamp": "2026-06-17T12:40:22.418Z",
+  "runtime": "Bun 1.3.9",
+  "results": [
+    {
+      "name": "RecipientToken generation — Tier 1 (passive)",
+      "iterations": 50,
+      "min": 0.23,
+      "max": 1.99,
+      "mean": 0.39,
+      "median": 0.34,
+      "p95": 0.55,
+      "p99": 1.41,
+      "unit": "ms"
+    },
+    {
+      "name": "RecipientToken generation — Tier 2 (OTP)",
+      "iterations": 50,
+      "min": 191.12,
+      "max": 293.71,
+      "mean": 221.3,
+      "median": 217.27,
+      "p95": 261.65,
+      "p99": 293.4,
+      "unit": "µs"
+    },
+    {
+      "name": "Full verifyAndStore() — Tier 1 (9-step pipeline)",
+      "iterations": 50,
+      "min": 0.47,
+      "max": 1.93,
+      "mean": 0.72,
+      "median": 0.63,
+      "p95": 1.2,
+      "p99": 1.86,
+      "unit": "ms"
+    },
+    {
+      "name": "Proof Certificate retrieval (SQLite read)",
+      "iterations": 200,
+      "min": 8.58,
+      "max": 63.33,
+      "mean": 12.57,
+      "median": 11.69,
+      "p95": 17.31,
+      "p99": 26.46,
+      "unit": "µs"
+    },
+    {
+      "name": "Pipeline rejection — SIGNATURE_INVALID (step 3 early exit)",
+      "iterations": 50,
+      "min": 70.29,
+      "max": 147.96,
+      "mean": 82.27,
+      "median": 77.94,
+      "p95": 107.84,
+      "p99": 133.03,
+      "unit": "µs"
+    }
+  ]
+}
